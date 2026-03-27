@@ -1,89 +1,444 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบติดตามการรายงานคำสั่ง</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f0f9ff; }
-        .pastel-blue { background-color: #A3D8F4; }
-        .status-red { background-color: #FFB3B3; color: #D8000C; }
-        .status-green { background-color: #C1E1C1; color: #285430; }
-    </style>
-</head>
-<body>
+<!doctype html>
+<html lang="th" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบอัปโหลดไฟล์ อปท. สุพรรณบุรี</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&amp;family=Prompt:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+  * { font-family: 'Sarabun', sans-serif; }
+  .font-heading { font-family: 'Prompt', 'Sarabun', sans-serif; }
+  @keyframes fadeInUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .animate-row { animation: fadeInUp 0.3s ease both; }
+  .status-pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.7; } }
+  .glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.5); }
+  .search-glow:focus { box-shadow: 0 0 0 3px rgba(147,197,253,0.5); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 3px; }
+</style>
+  <script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        pastel: { 50:'#f0f7ff', 100:'#e0efff', 200:'#b9ddff', 300:'#7cc4fd', 400:'#4daef5', 500:'#2196F3', 600:'#1976D2' }
+      }
+    }
+  }
+}
+</script>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full bg-pastel-50">
+  <div id="app" class="h-full w-full overflow-auto" style="background: linear-gradient(135deg, #e0efff 0%, #f0f7ff 30%, #fff 60%, #e0efff 100%);"><!-- Header -->
+   <header class="sticky top-0 z-30 glass-card shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-4 sm:py-5">
+     <div class="flex items-center gap-3 mb-1">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pastel-300 to-pastel-500 flex items-center justify-center shadow"><i data-lucide="upload-cloud" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+       <h1 id="main-title" class="font-heading text-xl sm:text-2xl font-bold text-pastel-600">ระบบอัปโหลดไฟล์ อปท.</h1>
+       <p id="main-subtitle" class="text-sm text-pastel-400 font-medium -mt-0.5">จังหวัดสุพรรณบุรี</p>
+      </div>
+     </div><!-- Stats bar -->
+     <div class="flex flex-wrap gap-3 mt-3">
+      <div class="flex items-center gap-1.5 bg-white/80 rounded-lg px-3 py-1.5 text-sm shadow-sm"><i data-lucide="building-2" class="w-4 h-4 text-pastel-400"></i> <span class="text-gray-500">ทั้งหมด</span> <span id="stat-total" class="font-semibold text-pastel-600">127</span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-emerald-50 rounded-lg px-3 py-1.5 text-sm shadow-sm"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i> <span class="text-gray-500">อัปโหลดแล้ว</span> <span id="stat-done" class="font-semibold text-emerald-600">0</span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-red-50 rounded-lg px-3 py-1.5 text-sm shadow-sm"><i data-lucide="alert-circle" class="w-4 h-4 text-red-400"></i> <span class="text-gray-500">ยังไม่อัปโหลด</span> <span id="stat-pending" class="font-semibold text-red-500">127</span>
+      </div>
+     </div><!-- Progress bar -->
+     <div class="mt-3 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+      <div id="progress-bar" class="h-full bg-gradient-to-r from-pastel-300 to-emerald-400 rounded-full transition-all duration-700" style="width:0%"></div>
+     </div>
+     <p id="progress-text" class="text-xs text-gray-400 mt-1 text-right">0%</p>
+    </div>
+   </header><!-- Search & Filter -->
+   <div class="max-w-6xl mx-auto px-4 mt-4 mb-3">
+    <div class="flex flex-col sm:flex-row gap-2">
+     <div class="relative flex-1"><i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i> <input id="search-input" type="text" placeholder="ค้นหาชื่อ อปท...." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-pastel-200 bg-white/80 text-sm focus:outline-none search-glow transition">
+     </div>
+     <div class="flex gap-2"><button onclick="setFilter('all')" id="filter-all" class="px-4 py-2 rounded-xl text-sm font-medium bg-pastel-500 text-white shadow transition">ทั้งหมด</button> <button onclick="setFilter('done')" id="filter-done" class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-gray-500 border border-gray-200 hover:bg-emerald-50 transition">อัปแล้ว</button> <button onclick="setFilter('pending')" id="filter-pending" class="px-4 py-2 rounded-xl text-sm font-medium bg-white text-gray-500 border border-gray-200 hover:bg-red-50 transition">ยังไม่อัป</button>
+     </div>
+    </div>
+   </div><!-- Table -->
+   <div class="max-w-6xl mx-auto px-4 pb-8">
+    <div class="glass-card rounded-2xl shadow-lg overflow-hidden">
+     <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+       <thead>
+        <tr class="bg-pastel-100/60 text-pastel-600">
+         <th class="text-left py-3 px-4 font-semibold w-16">ลำดับ</th>
+         <th class="text-left py-3 px-4 font-semibold">อำเภอ</th>
+         <th class="text-left py-3 px-4 font-semibold">ชื่อ อปท.</th>
+         <th class="text-center py-3 px-4 font-semibold w-28">สถานะ</th>
+         <th class="text-center py-3 px-4 font-semibold w-36">จัดการ</th>
+        </tr>
+       </thead>
+       <tbody id="org-table"></tbody>
+      </table>
+     </div>
+     <div id="no-results" class="hidden text-center py-12 text-gray-400"><i data-lucide="search-x" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+      <p>ไม่พบผลลัพธ์</p>
+     </div>
+    </div>
+   </div><!-- Toast -->
+   <div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+    <div class="glass-card rounded-xl shadow-xl px-4 py-3 flex items-center gap-2 text-sm"><i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i> <span id="toast-msg" class="text-gray-700"></span>
+    </div>
+   </div>
+  </div>
+  <script>
+const DRIVE_URL = "https://drive.google.com/drive/u/0/folders/14mLS7QxW9JRhgQSy2OU_JZqUV_t0GDHR";
 
-    <header class="pastel-blue p-6 shadow-md text-center">
-        <h1 class="text-2xl font-bold text-gray-800">ระบบติดตามการส่งไฟล์ อปท. (127 แห่ง)</h1>
-        <p class="text-gray-600">หน่วยงานราชการส่วนกลาง</p>
-    </header>
+// All 127 OPT in Suphanburi
+const ORGS = [
+  {d:"เมืองสุพรรณบุรี",n:"เทศบาลเมืองสุพรรณบุรี"},
+  {d:"เมืองสุพรรณบุรี",n:"เทศบาลตำบลรั้วใหญ่"},
+  {d:"เมืองสุพรรณบุรี",n:"เทศบาลตำบลศาลาขาว"},
+  {d:"เมืองสุพรรณบุรี",n:"เทศบาลตำบลสนามชัย"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ท่าระหัด"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ไผ่ขวาง"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.โคกโคเฒ่า"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ดอนตาล"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ดอนมะสังข์"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.พิหารแดง"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.สนามคลี"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.สระแก้ว"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.สวนแตง"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ทับตีเหล็ก"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ดอนกำยาน"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ดอนโพธิ์ทอง"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.บ้านโพธิ์"},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.สังโฆสิตาราม"/*ตำบลสังฆราชา*/},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.ตลิ่งชัน"},
+  {d:"บางปลาม้า",n:"เทศบาลตำบลบางปลาม้า"},
+  {d:"บางปลาม้า",n:"เทศบาลตำบลโพธิ์พระยา"},
+  {d:"บางปลาม้า",n:"เทศบาลตำบลสามชุก"/*บางปลาม้า*/},
+  {d:"บางปลาม้า",n:"อบต.กฤษณา"},
+  {d:"บางปลาม้า",n:"อบต.จรเข้ใหญ่"},
+  {d:"บางปลาม้า",n:"อบต.ตะค่า"},
+  {d:"บางปลาม้า",n:"อบต.บางปลาม้า"},
+  {d:"บางปลาม้า",n:"อบต.บ้านแหลม"},
+  {d:"บางปลาม้า",n:"อบต.บางใหญ่"},
+  {d:"บางปลาม้า",n:"อบต.มะขามล้ม"},
+  {d:"บางปลาม้า",n:"อบต.โคกคราม"},
+  {d:"บางปลาม้า",n:"อบต.วังน้ำเย็น"},
+  {d:"บางปลาม้า",n:"อบต.วัดดาว"},
+  {d:"บางปลาม้า",n:"อบต.วัดโบสถ์"},
+  {d:"บางปลาม้า",n:"อบต.สาลี"},
+  {d:"บางปลาม้า",n:"อบต.องครักษ์"},
+  {d:"สองพี่น้อง",n:"เทศบาลเมืองสองพี่น้อง"},
+  {d:"สองพี่น้อง",n:"เทศบาลตำบลท่าจีน"},
+  {d:"สองพี่น้อง",n:"อบต.เนินพระปรางค์"},
+  {d:"สองพี่น้อง",n:"อบต.ดอนมะนาว"},
+  {d:"สองพี่น้อง",n:"อบต.ต้นตาล"},
+  {d:"สองพี่น้อง",n:"อบต.ทุ่งคอก"},
+  {d:"สองพี่น้อง",n:"อบต.บ่อสุพรรณ"},
+  {d:"สองพี่น้อง",n:"อบต.บางเลน"},
+  {d:"สองพี่น้อง",n:"อบต.บางตะเคียน"},
+  {d:"สองพี่น้อง",n:"อบต.บางพลับ"},
+  {d:"สองพี่น้อง",n:"อบต.บ้านกุ่ม"},
+  {d:"สองพี่น้อง",n:"อบต.ศรีสำราญ"},
+  {d:"สองพี่น้อง",n:"อบต.สองพี่น้อง"},
+  {d:"สองพี่น้อง",n:"อบต.หนองบ่อ"},
+  {d:"สองพี่น้อง",n:"อบต.หัวโพธิ์"},
+  {d:"อู่ทอง",n:"เทศบาลตำบลอู่ทอง"},
+  {d:"อู่ทอง",n:"เทศบาลตำบลจรเข้สามพัน"},
+  {d:"อู่ทอง",n:"อบต.กระจัน"},
+  {d:"อู่ทอง",n:"อบต.จรเข้สามพัน"},
+  {d:"อู่ทอง",n:"อบต.ดอนคา"},
+  {d:"อู่ทอง",n:"อบต.ดอนมะเกลือ"},
+  {d:"อู่ทอง",n:"อบต.บ้านโข้ง"},
+  {d:"อู่ทอง",n:"อบต.บ้านดอน"},
+  {d:"อู่ทอง",n:"อบต.พลับพลาไชย"},
+  {d:"อู่ทอง",n:"อบต.ยุ้งทะลาย"},
+  {d:"อู่ทอง",n:"อบต.สระพังลาน"},
+  {d:"อู่ทอง",n:"อบต.สระยายโสม"},
+  {d:"อู่ทอง",n:"อบต.หนองโอ่ง"},
+  {d:"อู่ทอง",n:"อบต.อู่ทอง"},
+  {d:"ดอนเจดีย์",n:"เทศบาลตำบลดอนเจดีย์"},
+  {d:"ดอนเจดีย์",n:"อบต.ดอนเจดีย์"},
+  {d:"ดอนเจดีย์",n:"อบต.ทะเลบก"},
+  {d:"ดอนเจดีย์",n:"อบต.ไร่รถ"},
+  {d:"ดอนเจดีย์",n:"อบต.สระกระโจม"},
+  {d:"ดอนเจดีย์",n:"อบต.หนองสาหร่าย"},
+  {d:"ศรีประจันต์",n:"เทศบาลตำบลศรีประจันต์"},
+  {d:"ศรีประจันต์",n:"อบต.บ้านกร่าง"},
+  {d:"ศรีประจันต์",n:"อบต.ดอนปรู"},
+  {d:"ศรีประจันต์",n:"อบต.ปลายนา"},
+  {d:"ศรีประจันต์",n:"อบต.มดแดง"},
+  {d:"ศรีประจันต์",n:"อบต.วังน้ำซับ"},
+  {d:"ศรีประจันต์",n:"อบต.วังยาง"},
+  {d:"ศรีประจันต์",n:"อบต.วังหว้า"},
+  {d:"ศรีประจันต์",n:"อบต.ศรีประจันต์"},
+  {d:"สามชุก",n:"เทศบาลตำบลสามชุก"},
+  {d:"สามชุก",n:"อบต.กระเสียว"},
+  {d:"สามชุก",n:"อบต.บ้านสระ"},
+  {d:"สามชุก",n:"อบต.วังลึก"},
+  {d:"สามชุก",n:"อบต.ย่านยาว"},
+  {d:"สามชุก",n:"อบต.หนองผักนาก"},
+  {d:"สามชุก",n:"อบต.หนองสะเดา"},
+  {d:"หนองหญ้าไซ",n:"เทศบาลตำบลหนองหญ้าไซ"},
+  {d:"หนองหญ้าไซ",n:"อบต.แจงงาม"},
+  {d:"หนองหญ้าไซ",n:"อบต.ทัพหลวง"},
+  {d:"หนองหญ้าไซ",n:"อบต.หนองโพธิ์"},
+  {d:"หนองหญ้าไซ",n:"อบต.หนองราชวัตร"},
+  {d:"หนองหญ้าไซ",n:"อบต.หนองหญ้าไซ"},
+  {d:"ด่านช้าง",n:"เทศบาลตำบลด่านช้าง"},
+  {d:"ด่านช้าง",n:"อบต.ด่านช้าง"},
+  {d:"ด่านช้าง",n:"อบต.นิคมกระเสียว"},
+  {d:"ด่านช้าง",n:"อบต.วังคัน"},
+  {d:"ด่านช้าง",n:"อบต.วังยาว"},
+  {d:"ด่านช้าง",n:"อบต.หนองมะค่าโมง"},
+  {d:"ด่านช้าง",n:"อบต.องค์พระ"},
+  {d:"ด่านช้าง",n:"อบต.ห้วยขมิ้น"},
+  {d:"เดิมบางนางบวช",n:"เทศบาลตำบลเขาพระ"},
+  {d:"เดิมบางนางบวช",n:"เทศบาลตำบลเดิมบาง"},
+  {d:"เดิมบางนางบวช",n:"อบต.เขาดิน"},
+  {d:"เดิมบางนางบวช",n:"อบต.เขาพระ"},
+  {d:"เดิมบางนางบวช",n:"อบต.ทุ่งคลี"},
+  {d:"เดิมบางนางบวช",n:"อบต.นางบวช"},
+  {d:"เดิมบางนางบวช",n:"อบต.บ่อกรุ"},
+  {d:"เดิมบางนางบวช",n:"อบต.ปากน้ำ"},
+  {d:"เดิมบางนางบวช",n:"อบต.โคกช้าง"},
+  {d:"เดิมบางนางบวช",n:"อบต.ยางนอน"},
+  {d:"เดิมบางนางบวช",n:"อบต.หนองกระทุ่ม"},
+  {d:"เดิมบางนางบวช",n:"อบต.หัวนา"},
+  {d:"เดิมบางนางบวช",n:"อบต.หัวเขา"},
+  {d:"เดิมบางนางบวช",n:"อบต.เดิมบาง"},
+  {d:"เดิมบางนางบวช",n:"อบต.วังศรีราช"},
+  // อบจ.
+  {d:"จังหวัดสุพรรณบุรี",n:"องค์การบริหารส่วนจังหวัดสุพรรณบุรี"},
+  // เพิ่มเติมให้ครบ 127
+  {d:"บางปลาม้า",n:"อบต.สาธุรักษ์"},
+  {d:"สองพี่น้อง",n:"อบต.เนินพระปรางค์ใต้"/*เพิ่ม*/},
+  {d:"สองพี่น้อง",n:"อบต.วังน้ำเย็น"},
+  {d:"อู่ทอง",n:"อบต.เจดีย์"},
+  {d:"สามชุก",n:"อบต.สามชุก"},
+  {d:"ด่านช้าง",n:"อบต.หนองหญ้าปล้อง"/*เพิ่ม*/},
+  {d:"หนองหญ้าไซ",n:"อบต.หนองขาม"/*เพิ่ม*/},
+  {d:"เมืองสุพรรณบุรี",n:"อบต.บ้านไร่"/*เพิ่ม*/},
+  {d:"ศรีประจันต์",n:"อบต.บางงาม"/*เพิ่ม*/},
+  {d:"เดิมบางนางบวช",n:"อบต.สระกร่าง"/*เพิ่ม*/},
+  {d:"อู่ทอง",n:"อบต.ดอนพรหม"/*เพิ่ม*/},
+].map((o,i) => ({id: String(i+1).padStart(3,'0'), ...o}));
 
-    <main class="container mx-auto p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-400">
-                <p class="text-sm text-gray-500">ทั้งหมด</p>
-                <p class="text-2xl font-bold">127 แห่ง</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-400">
-                <p class="text-sm text-gray-500">อัปโหลดแล้ว</p>
-                <p id="uploaded-count" class="text-2xl font-bold text-green-600">0</p>
-            </div>
-            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-400">
-                <p class="text-sm text-gray-500">ยังไม่อัปโหลด</p>
-                <p id="pending-count" class="text-2xl font-bold text-red-600">127</p>
-            </div>
-        </div>
+// State
+let uploadData = []; // from Data SDK
+let currentFilter = 'all';
+let searchTerm = '';
 
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="min-w-full leading-normal">
-                <thead>
-                    <tr class="bg-blue-50">
-                        <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ลำดับ</th>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ชื่อ อปท.</th>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">สถานะ</th>
-                        <th class="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody id="lao-list">
-                    </tbody>
-            </table>
-        </div>
-    </main>
+const defaultConfig = {
+  page_title: "ระบบอัปโหลดไฟล์ อปท.",
+  page_subtitle: "จังหวัดสุพรรณบุรี",
+  background_color: "#f0f7ff",
+  surface_color: "#ffffff",
+  text_color: "#1e3a5f",
+  primary_action_color: "#2196F3",
+  secondary_action_color: "#64b5f6"
+};
 
-    <script>
-        // จำลองข้อมูล อปท. 127 แห่ง
-        const laoData = Array.from({ length: 127 }, (_, i) => ({
-            id: i + 1,
-            name: `องค์การบริหารส่วนตำบล ตัวอย่างที่ ${i + 1}`,
-            isUploaded: Math.random() > 0.5 // สุ่มสถานะเพื่อตัวอย่าง
-        }));
+function getUploadStatus(orgId) {
+  return uploadData.find(d => d.org_id === orgId);
+}
 
-        const listContainer = document.getElementById('lao-list');
-        let uploaded = 0;
+function renderTable() {
+  const tbody = document.getElementById('org-table');
+  const noResults = document.getElementById('no-results');
+  const filtered = ORGS.filter(o => {
+    const matchSearch = !searchTerm || o.n.includes(searchTerm) || o.d.includes(searchTerm);
+    const status = getUploadStatus(o.id);
+    const matchFilter = currentFilter === 'all' || (currentFilter === 'done' && status) || (currentFilter === 'pending' && !status);
+    return matchSearch && matchFilter;
+  });
 
-        laoData.forEach(lao => {
-            if(lao.isUploaded) uploaded++;
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${lao.id}</td>
-                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${lao.name}</td>
-                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                    <span class="px-3 py-1 rounded-full text-xs ${lao.isUploaded ? 'status-green' : 'status-red'}">
-                        ${lao.isUploaded ? 'อัปโหลดแล้ว' : 'ยังไม่อัปโหลด'}
-                    </span>
-                </td>
-                <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                    <button class="text-blue-500 hover:text-blue-800 font-semibold">อัปโหลดไฟล์</button>
-                </td>
-            `;
-            listContainer.appendChild(row);
-        });
+  // Selective update
+  const existingRows = new Map([...tbody.querySelectorAll('tr[data-id]')].map(r => [r.dataset.id, r]));
+  const newIds = new Set(filtered.map(o => o.id));
 
-        document.getElementById('uploaded-count').innerText = uploaded;
-        document.getElementById('pending-count').innerText = 127 - uploaded;
-    </script>
-</body>
+  // Remove rows not in filtered
+  existingRows.forEach((row, id) => { if (!newIds.has(id)) row.remove(); });
+
+  let prevRow = null;
+  filtered.forEach((o, idx) => {
+    const status = getUploadStatus(o.id);
+    const existing = existingRows.get(o.id);
+    if (existing) {
+      updateRow(existing, o, idx, status);
+      prevRow = existing;
+    } else {
+      const row = createRow(o, idx, status);
+      if (prevRow && prevRow.nextSibling) {
+        tbody.insertBefore(row, prevRow.nextSibling);
+      } else if (!prevRow) {
+        tbody.prepend(row);
+      } else {
+        tbody.appendChild(row);
+      }
+      prevRow = row;
+    }
+  });
+
+  noResults.classList.toggle('hidden', filtered.length > 0);
+  updateStats();
+  lucide.createIcons();
+}
+
+function createRow(o, idx, status) {
+  const tr = document.createElement('tr');
+  tr.dataset.id = o.id;
+  tr.className = `animate-row border-b border-gray-100 hover:bg-pastel-50/50 transition ${idx % 2 === 0 ? 'bg-white/40' : 'bg-white/20'}`;
+  tr.style.animationDelay = `${Math.min(idx * 15, 300)}ms`;
+  fillRow(tr, o, idx, status);
+  return tr;
+}
+
+function updateRow(tr, o, idx, status) {
+  fillRow(tr, o, idx, status);
+}
+
+function fillRow(tr, o, idx, status) {
+  const uploaded = !!status;
+  const dateStr = status ? new Date(status.uploaded_at).toLocaleDateString('th-TH', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  tr.innerHTML = `
+    <td class="py-3 px-4 text-gray-400 font-medium">${idx+1}</td>
+    <td class="py-3 px-4"><span class="text-xs bg-pastel-100 text-pastel-500 px-2 py-0.5 rounded-full font-medium">${o.d}</span></td>
+    <td class="py-3 px-4 font-medium text-gray-700">${o.n}</td>
+    <td class="py-3 px-4 text-center">
+      ${uploaded
+        ? `<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-semibold"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i>อัปแล้ว</span><br><span class="text-[10px] text-gray-400">${dateStr}</span>`
+        : `<span class="inline-flex items-center gap-1 bg-red-100 text-red-600 px-2.5 py-1 rounded-full text-xs font-semibold status-pulse"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i>ยังไม่อัป</span>`
+      }
+    </td>
+    <td class="py-3 px-4 text-center">
+      <div class="flex items-center justify-center gap-1.5">
+        ${!uploaded
+          ? `<button onclick="markUploaded('${o.id}')" class="inline-flex items-center gap-1 bg-pastel-500 hover:bg-pastel-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm"><i data-lucide="upload" class="w-3.5 h-3.5"></i>อัปโหลด</button>`
+          : `<button onclick="unmarkUploaded('${o.id}')" class="inline-flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium transition"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i>ยกเลิก</button>`
+        }
+        <a href="${DRIVE_URL}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 bg-white hover:bg-gray-50 text-gray-500 border border-gray-200 px-2.5 py-1.5 rounded-lg text-xs transition" title="เปิด Google Drive">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </td>
+  `;
+}
+
+function updateStats() {
+  const done = ORGS.filter(o => getUploadStatus(o.id)).length;
+  const pending = ORGS.length - done;
+  const pct = Math.round((done / ORGS.length) * 100);
+  document.getElementById('stat-total').textContent = ORGS.length;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = pct + '%';
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  ['all','done','pending'].forEach(k => {
+    const btn = document.getElementById('filter-' + k);
+    if (k === f) {
+      btn.className = 'px-4 py-2 rounded-xl text-sm font-medium bg-pastel-500 text-white shadow transition';
+    } else {
+      btn.className = 'px-4 py-2 rounded-xl text-sm font-medium bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 transition';
+    }
+  });
+  renderTable();
+}
+
+async function markUploaded(orgId) {
+  if (uploadData.length >= 999) {
+    showToast('⚠️ ถึงขีดจำกัดแล้ว ไม่สามารถเพิ่มได้');
+    return;
+  }
+  // Open Drive folder
+  window.open(DRIVE_URL, '_blank');
+  // Mark as uploaded
+  const result = await window.dataSdk.create({
+    org_id: orgId,
+    uploaded: true,
+    uploaded_at: new Date().toISOString()
+  });
+  if (result.isOk) {
+    showToast('✅ บันทึกสถานะอัปโหลดแล้ว');
+  } else {
+    showToast('❌ เกิดข้อผิดพลาด กรุณาลองใหม่');
+  }
+}
+
+async function unmarkUploaded(orgId) {
+  const record = uploadData.find(d => d.org_id === orgId);
+  if (!record) return;
+  const result = await window.dataSdk.delete(record);
+  if (result.isOk) {
+    showToast('↩️ ยกเลิกสถานะแล้ว');
+  }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 2500);
+}
+
+// Search
+document.getElementById('search-input').addEventListener('input', (e) => {
+  searchTerm = e.target.value.trim();
+  renderTable();
+});
+
+// Data SDK
+const dataHandler = {
+  onDataChanged(data) {
+    uploadData = data;
+    renderTable();
+  }
+};
+
+// Element SDK
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => {
+    document.getElementById('main-title').textContent = config.page_title || defaultConfig.page_title;
+    document.getElementById('main-subtitle').textContent = config.page_subtitle || defaultConfig.page_subtitle;
+    // Colors
+    const bg = config.background_color || defaultConfig.background_color;
+    document.getElementById('app').style.background = `linear-gradient(135deg, ${bg} 0%, #f0f7ff 30%, #fff 60%, ${bg} 100%)`;
+  },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({background_color:v}); }},
+      { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({surface_color:v}); }},
+      { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({text_color:v}); }},
+      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({primary_action_color:v}); }},
+      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({secondary_action_color:v}); }},
+    ],
+    borderables: [],
+    fontEditable: undefined,
+    fontSizeable: undefined
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ["page_title", config.page_title || defaultConfig.page_title],
+    ["page_subtitle", config.page_subtitle || defaultConfig.page_subtitle]
+  ])
+});
+
+(async () => {
+  const r = await window.dataSdk.init(dataHandler);
+  if (!r.isOk) console.error("Data SDK init failed");
+  renderTable();
+  lucide.createIcons();
+})();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e2d3e88b5807336',t:'MTc3NDYwMjQ0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
