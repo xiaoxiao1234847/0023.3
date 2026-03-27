@@ -1,542 +1,150 @@
-<!doctype html>
-<html lang="th" class="h-full">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบติดตามการส่งไฟล์ อปท. สุพรรณบุรี</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
-  <script src="/_sdk/data_sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
-  <style>
-* { font-family: 'Noto Sans Thai', sans-serif; }
-html, body { height: 100%; margin: 0; }
-.status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.toast-enter { animation: slideIn 0.3s ease-out; }
-.toast-exit { animation: slideOut 0.3s ease-in forwards; }
-@keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes slideOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-20px); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.row-animate { animation: fadeIn 0.2s ease-out; }
-.upload-area { border: 2px dashed #93c5fd; border-radius: 16px; transition: all 0.2s; }
-.upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ระบบอัปโหลดเอกสาร อปท.</title>
+
+<style>
+body {
+  font-family: "Sarabun", sans-serif;
+  background: #eaf6ff;
+  padding: 20px;
+}
+
+h2 {
+  text-align: center;
+  color: #4da6ff;
+}
+
+.search-box {
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+input {
+  padding: 8px;
+  width: 300px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background: #b3e0ff;
+}
+
+.status-red {
+  background: #ffcccc;
+}
+
+.status-green {
+  background: #ccffcc;
+}
+
+button {
+  background: #66ccff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
 </style>
-  <script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        pastel: { 50: '#f0f7ff', 100: '#e0efff', 200: '#b9ddff', 300: '#7cc4ff', 400: '#3aa5ff', 500: '#0284c7' }
-      }
-    }
-  }
-}
-</script>
-  <style>body { box-sizing: border-box; }</style>
- </head>
- <body class="h-full bg-pastel-50 text-gray-700">
-  <div id="app" class="h-full w-full overflow-auto"><!-- Toast container -->
-   <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div><!-- Header -->
-   <header class="bg-white border-b border-pastel-200 sticky top-0 z-40 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6">
-     <div class="flex items-center justify-between flex-wrap gap-3">
-      <div class="flex items-center gap-3">
-       <div class="w-10 h-10 rounded-xl bg-pastel-400 flex items-center justify-center"><i data-lucide="building-2" class="text-white" style="width:22px;height:22px;"></i>
-       </div>
-       <div>
-        <h1 id="page-title" class="text-lg sm:text-xl font-bold text-gray-800">ระบบติดตามการส่งไฟล์</h1>
-        <p id="page-subtitle" class="text-xs sm:text-sm text-gray-400">องค์กรปกครองส่วนท้องถิ่นจังหวัดสุพรรณบุรี</p>
-       </div>
-      </div>
-      <div class="flex items-center gap-4 text-sm">
-       <div class="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> <span>ส่งแล้ว <strong id="count-done">0</strong></span>
-       </div>
-       <div class="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-1.5 rounded-full"><i data-lucide="alert-circle" style="width:16px;height:16px;"></i> <span>ยังไม่ส่ง <strong id="count-pending">127</strong></span>
-       </div>
-      </div>
-     </div>
-    </div>
-   </header><!-- Progress bar -->
-   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-pastel-100">
-     <div class="flex justify-between text-sm mb-2"><span class="text-gray-500">ความคืบหน้าการส่งไฟล์</span> <span id="progress-text" class="font-semibold text-pastel-500">0%</span>
-     </div>
-     <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-      <div id="progress-bar" class="h-full bg-gradient-to-r from-pastel-300 to-pastel-400 rounded-full transition-all duration-500" style="width:0%"></div>
-     </div>
-    </div>
-   </div><!-- Upload section -->
-   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
-    <div class="bg-white rounded-2xl p-5 shadow-sm border border-pastel-100">
-     <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i data-lucide="upload-cloud" style="width:20px;height:20px;" class="text-pastel-400"></i> อัปโหลดไฟล์</h2>
-     <div class="grid sm:grid-cols-3 gap-3">
-      <div><label class="block text-sm text-gray-500 mb-1" for="org-select">เลือกหน่วยงาน</label> <select id="org-select" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-pastel-300 bg-white"> <option value="">-- เลือกหน่วยงาน --</option> </select>
-      </div>
-      <div><label class="block text-sm text-gray-500 mb-1">ไฟล์ PDF</label>
-       <div id="file-drop" class="upload-area px-3 py-2 flex items-center gap-2 cursor-pointer" onclick="document.getElementById('file-input').click()"><i data-lucide="file-text" style="width:18px;height:18px;" class="text-pastel-400"></i> <span id="file-label" class="text-sm text-gray-400 truncate">คลิกเพื่อเลือกไฟล์...</span> <input type="file" id="file-input" accept=".pdf" class="hidden" onchange="handleFileSelect(this)">
-       </div>
-      </div>
-      <div class="flex items-end"><button id="upload-btn" onclick="handleUpload()" disabled class="w-full bg-pastel-400 hover:bg-pastel-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-all flex items-center justify-center gap-2"> <i data-lucide="upload" style="width:16px;height:16px;"></i> <span id="upload-btn-text">อัปโหลด</span> </button>
-      </div>
-     </div>
-     <p class="text-xs text-gray-400 mt-2 flex items-center gap-1"><i data-lucide="info" style="width:12px;height:12px;"></i> ไฟล์จะถูกบันทึกสถานะไว้ในระบบ — กรุณาอัปโหลดไฟล์จริงไปยัง <a href="https://drive.google.com/drive/u/0/folders/14mLS7QxW9JRhgQSy2OU_JZqUV_t0GDHR" target="_blank" rel="noopener noreferrer" class="text-pastel-400 underline">Google Drive โฟลเดอร์นี้</a></p>
-    </div>
-   </div><!-- Search & Filter -->
-   <div class="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
-    <div class="flex flex-wrap gap-3 items-center">
-     <div class="relative flex-1 min-w-[200px]"><i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" style="width:16px;height:16px;"></i> <input id="search-input" type="text" placeholder="ค้นหาหน่วยงาน..." class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pastel-300 bg-white" oninput="renderTable()">
-     </div>
-     <div class="flex gap-2"><button onclick="setFilter('all')" id="filter-all" class="px-3 py-2 rounded-xl text-sm font-medium bg-pastel-400 text-white transition-all">ทั้งหมด</button> <button onclick="setFilter('done')" id="filter-done" class="px-3 py-2 rounded-xl text-sm font-medium bg-white text-gray-500 border border-gray-200 hover:bg-green-50 transition-all">ส่งแล้ว</button> <button onclick="setFilter('pending')" id="filter-pending" class="px-3 py-2 rounded-xl text-sm font-medium bg-white text-gray-500 border border-gray-200 hover:bg-red-50 transition-all">ยังไม่ส่ง</button>
-     </div>
-    </div>
-   </div><!-- Table -->
-   <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 pb-8">
-    <div class="bg-white rounded-2xl shadow-sm border border-pastel-100 overflow-hidden">
-     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-       <thead>
-        <tr class="bg-pastel-50 text-gray-500 text-left">
-         <th class="px-4 py-3 font-medium w-12">#</th>
-         <th class="px-4 py-3 font-medium">อำเภอ</th>
-         <th class="px-4 py-3 font-medium">หน่วยงาน</th>
-         <th class="px-4 py-3 font-medium text-center">สถานะ</th>
-         <th class="px-4 py-3 font-medium">วันที่ส่ง</th>
-        </tr>
-       </thead>
-       <tbody id="org-table"></tbody>
-      </table>
-     </div>
-     <div id="no-results" class="hidden text-center py-8 text-gray-400"><i data-lucide="search-x" style="width:32px;height:32px;" class="mx-auto mb-2 text-gray-300"></i>
-      <p>ไม่พบหน่วยงานที่ค้นหา</p>
-     </div>
-    </div>
-   </div><!-- Inline confirm modal -->
-   <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.3)">
-    <div class="bg-white rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
-     <p id="confirm-msg" class="text-gray-700 mb-4"></p>
-     <div class="flex gap-3 justify-end"><button onclick="closeConfirm()" class="px-4 py-2 rounded-xl text-sm text-gray-500 bg-gray-100 hover:bg-gray-200">ยกเลิก</button> <button id="confirm-ok" class="px-4 py-2 rounded-xl text-sm text-white bg-pastel-400 hover:bg-pastel-500">ยืนยัน</button>
-     </div>
-    </div>
-   </div>
-  </div>
-  <script>
-// === ORG DATA (127 organizations) ===
-const ALL_ORGS = [
-  // เมืองสุพรรณบุรี
-  {id:"01",district:"เมืองสุพรรณบุรี",name:"เทศบาลเมืองสุพรรณบุรี"},
-  {id:"02",district:"เมืองสุพรรณบุรี",name:"อบต.สนามชัย"},
-  {id:"03",district:"เมืองสุพรรณบุรี",name:"อบต.ท่าระหัด"},
-  {id:"04",district:"เมืองสุพรรณบุรี",name:"อบต.ไผ่ขวาง"},
-  {id:"05",district:"เมืองสุพรรณบุรี",name:"อบต.โคกโคเฒ่า"},
-  {id:"06",district:"เมืองสุพรรณบุรี",name:"อบต.ดอนตาล"},
-  {id:"07",district:"เมืองสุพรรณบุรี",name:"อบต.ดอนมะสังข์"},
-  {id:"08",district:"เมืองสุพรรณบุรี",name:"อบต.พิหารแดง"},
-  {id:"09",district:"เมืองสุพรรณบุรี",name:"อบต.รั้วใหญ่"},
-  {id:"10",district:"เมืองสุพรรณบุรี",name:"อบต.ศาลาขาว"},
-  {id:"11",district:"เมืองสุพรรณบุรี",name:"อบต.สวนแตง"},
-  {id:"12",district:"เมืองสุพรรณบุรี",name:"อบต.สระแก้ว"},
-  {id:"13",district:"เมืองสุพรรณบุรี",name:"อบต.ทับตีเหล็ก"},
-  // เดิมบางนางบวช
-  {id:"14",district:"เดิมบางนางบวช",name:"เทศบาลตำบลเดิมบาง"},
-  {id:"15",district:"เดิมบางนางบวช",name:"อบต.เดิมบาง"},
-  {id:"16",district:"เดิมบางนางบวช",name:"อบต.นางบวช"},
-  {id:"17",district:"เดิมบางนางบวช",name:"อบต.เขาพระ"},
-  {id:"18",district:"เดิมบางนางบวช",name:"อบต.เขาดิน"},
-  {id:"19",district:"เดิมบางนางบวช",name:"อบต.ปากน้ำ"},
-  {id:"20",district:"เดิมบางนางบวช",name:"อบต.ทุ่งคลี"},
-  {id:"21",district:"เดิมบางนางบวช",name:"อบต.โคกช้าง"},
-  {id:"22",district:"เดิมบางนางบวช",name:"อบต.หัวเขา"},
-  {id:"23",district:"เดิมบางนางบวช",name:"อบต.หัวนา"},
-  {id:"24",district:"เดิมบางนางบวช",name:"อบต.บ่อกรุ"},
-  {id:"25",district:"เดิมบางนางบวช",name:"อบต.วังศรีราช"},
-  {id:"26",district:"เดิมบางนางบวช",name:"อบต.ยางนอน"},
-  {id:"27",district:"เดิมบางนางบวช",name:"อบต.หนองกระทุ่ม"},
-  // ด่านช้าง
-  {id:"28",district:"ด่านช้าง",name:"เทศบาลตำบลด่านช้าง"},
-  {id:"29",district:"ด่านช้าง",name:"อบต.ด่านช้าง"},
-  {id:"30",district:"ด่านช้าง",name:"อบต.ห้วยขมิ้น"},
-  {id:"31",district:"ด่านช้าง",name:"อบต.องค์พระ"},
-  {id:"32",district:"ด่านช้าง",name:"อบต.นิคมกระเสียว"},
-  {id:"33",district:"ด่านช้าง",name:"อบต.หนองมะค่าโมง"},
-  {id:"34",district:"ด่านช้าง",name:"อบต.วังคัน"},
-  {id:"35",district:"ด่านช้าง",name:"อบต.วังยาว"},
-  // บางปลาม้า
-  {id:"36",district:"บางปลาม้า",name:"เทศบาลตำบลบางปลาม้า"},
-  {id:"37",district:"บางปลาม้า",name:"เทศบาลตำบลโคกคราม"},
-  {id:"38",district:"บางปลาม้า",name:"อบต.บางปลาม้า"},
-  {id:"39",district:"บางปลาม้า",name:"อบต.กฤษณา"},
-  {id:"40",district:"บางปลาม้า",name:"อบต.สาลี"},
-  {id:"41",district:"บางปลาม้า",name:"อบต.ไผ่กองดิน"},
-  {id:"42",district:"บางปลาม้า",name:"อบต.องครักษ์"},
-  {id:"43",district:"บางปลาม้า",name:"อบต.จรเข้ใหญ่"},
-  {id:"44",district:"บางปลาม้า",name:"อบต.บ้านแหลม"},
-  {id:"45",district:"บางปลาม้า",name:"อบต.มะขามล้ม"},
-  {id:"46",district:"บางปลาม้า",name:"อบต.วังน้ำเย็น"},
-  {id:"47",district:"บางปลาม้า",name:"อบต.วัดดาว"},
-  {id:"48",district:"บางปลาม้า",name:"อบต.วัดโบสถ์"},
-  {id:"49",district:"บางปลาม้า",name:"อบต.ตะค่า"},
-  // ศรีประจันต์
-  {id:"50",district:"ศรีประจันต์",name:"เทศบาลตำบลศรีประจันต์"},
-  {id:"51",district:"ศรีประจันต์",name:"อบต.ศรีประจันต์"},
-  {id:"52",district:"ศรีประจันต์",name:"อบต.บ้านกร่าง"},
-  {id:"53",district:"ศรีประจันต์",name:"อบต.มดแดง"},
-  {id:"54",district:"ศรีประจันต์",name:"อบต.บางงาม"},
-  {id:"55",district:"ศรีประจันต์",name:"อบต.ดอนปรู"},
-  {id:"56",district:"ศรีประจันต์",name:"อบต.ปลายนา"},
-  {id:"57",district:"ศรีประจันต์",name:"อบต.วังหว้า"},
-  {id:"58",district:"ศรีประจันต์",name:"อบต.วังน้ำซับ"},
-  {id:"59",district:"ศรีประจันต์",name:"อบต.วังยาง"},
-  // ดอนเจดีย์
-  {id:"60",district:"ดอนเจดีย์",name:"เทศบาลตำบลดอนเจดีย์"},
-  {id:"61",district:"ดอนเจดีย์",name:"อบต.ดอนเจดีย์"},
-  {id:"62",district:"ดอนเจดีย์",name:"อบต.หนองสาหร่าย"},
-  {id:"63",district:"ดอนเจดีย์",name:"อบต.ไร่รถ"},
-  {id:"64",district:"ดอนเจดีย์",name:"อบต.สระกระโจม"},
-  {id:"65",district:"ดอนเจดีย์",name:"อบต.ทะเลบก"},
-  // สองพี่น้อง
-  {id:"66",district:"สองพี่น้อง",name:"เทศบาลตำบลสองพี่น้อง"},
-  {id:"67",district:"สองพี่น้อง",name:"เทศบาลตำบลจรเข้สามพัน"},
-  {id:"68",district:"สองพี่น้อง",name:"อบต.สองพี่น้อง"},
-  {id:"69",district:"สองพี่น้อง",name:"อบต.บางเลน"},
-  {id:"70",district:"สองพี่น้อง",name:"อบต.บางตาเถร"},
-  {id:"71",district:"สองพี่น้อง",name:"อบต.บางพลับ"},
-  {id:"72",district:"สองพี่น้อง",name:"อบต.บ้านกุ่ม"},
-  {id:"73",district:"สองพี่น้อง",name:"อบต.หัวโพธิ์"},
-  {id:"74",district:"สองพี่น้อง",name:"อบต.บางสะแก"},
-  {id:"75",district:"สองพี่น้อง",name:"อบต.เนินพระปรางค์"},
-  {id:"76",district:"สองพี่น้อง",name:"อบต.บ้านช้าง"},
-  {id:"77",district:"สองพี่น้อง",name:"อบต.ต้นตาล"},
-  {id:"78",district:"สองพี่น้อง",name:"อบต.ศรีสำราญ"},
-  {id:"79",district:"สองพี่น้อง",name:"อบต.ทุ่งคอก"},
-  {id:"80",district:"สองพี่น้อง",name:"อบต.ดอนมะนาว"},
-  // สามชุก
-  {id:"81",district:"สามชุก",name:"เทศบาลตำบลสามชุก"},
-  {id:"82",district:"สามชุก",name:"อบต.สามชุก"},
-  {id:"83",district:"สามชุก",name:"อบต.บ้านสระ"},
-  {id:"84",district:"สามชุก",name:"อบต.วังลึก"},
-  {id:"85",district:"สามชุก",name:"อบต.หนองผักนาก"},
-  {id:"86",district:"สามชุก",name:"อบต.หนองสะเดา"},
-  {id:"87",district:"สามชุก",name:"อบต.กระเสียว"},
-  {id:"88",district:"สามชุก",name:"อบต.ย่านยาว"},
-  // อู่ทอง
-  {id:"89",district:"อู่ทอง",name:"เทศบาลตำบลอู่ทอง"},
-  {id:"90",district:"อู่ทอง",name:"อบต.อู่ทอง"},
-  {id:"91",district:"อู่ทอง",name:"อบต.สระยายโสม"},
-  {id:"92",district:"อู่ทอง",name:"อบต.จรเข้สามพัน"},
-  {id:"93",district:"อู่ทอง",name:"อบต.บ้านดอน"},
-  {id:"94",district:"อู่ทอง",name:"อบต.ยุ้งทะลาย"},
-  {id:"95",district:"อู่ทอง",name:"อบต.ดอนคา"},
-  {id:"96",district:"อู่ทอง",name:"อบต.พลับพลาไชย"},
-  {id:"97",district:"อู่ทอง",name:"อบต.บ้านโข้ง"},
-  {id:"98",district:"อู่ทอง",name:"อบต.เจดีย์"},
-  {id:"99",district:"อู่ทอง",name:"อบต.สระพังลาน"},
-  {id:"100",district:"อู่ทอง",name:"อบต.กระจัน"},
-  {id:"101",district:"อู่ทอง",name:"อบต.หนองโอ่ง"},
-  // หนองหญ้าไซ
-  {id:"102",district:"หนองหญ้าไซ",name:"เทศบาลตำบลหนองหญ้าไซ"},
-  {id:"103",district:"หนองหญ้าไซ",name:"อบต.หนองหญ้าไซ"},
-  {id:"104",district:"หนองหญ้าไซ",name:"อบต.หนองราชวัตร"},
-  {id:"105",district:"หนองหญ้าไซ",name:"อบต.หนองโพธิ์"},
-  {id:"106",district:"หนองหญ้าไซ",name:"อบต.แจงงาม"},
-  {id:"107",district:"หนองหญ้าไซ",name:"อบต.หนองขาม"},
-  {id:"108",district:"หนองหญ้าไซ",name:"อบต.ทัพหลวง"},
-  // เพิ่มเติมอีกเพื่อให้ครบ 127
-  {id:"109",district:"เมืองสุพรรณบุรี",name:"อบต.บ้านโพธิ์"},
-  {id:"110",district:"เมืองสุพรรณบุรี",name:"อบต.ตลิ่งชัน"},
-  {id:"111",district:"บางปลาม้า",name:"อบต.โคกคราม"},
-  {id:"112",district:"บางปลาม้า",name:"อบต.บางใหญ่"},
-  {id:"113",district:"สองพี่น้อง",name:"อบต.เนินพระปรางค์เหนือ"},
-  {id:"114",district:"อู่ทอง",name:"อบต.หนองยายดา"},
-  {id:"115",district:"อู่ทอง",name:"อบต.ดอนพรหม"},
-  {id:"116",district:"สามชุก",name:"อบต.หนองสาหร่าย"},
-  {id:"117",district:"ด่านช้าง",name:"อบต.หนองหญ้าปล้อง"},
-  {id:"118",district:"ดอนเจดีย์",name:"อบต.สระศรีเจริญ"},
-  {id:"119",district:"ศรีประจันต์",name:"อบต.วังหว้าเหนือ"},
-  {id:"120",district:"เดิมบางนางบวช",name:"อบต.สระกร่าง"},
-  {id:"121",district:"หนองหญ้าไซ",name:"อบต.หนองโพธิ์เหนือ"},
-  {id:"122",district:"เมืองสุพรรณบุรี",name:"อบต.สนามคลี"},
-  {id:"123",district:"สองพี่น้อง",name:"อบต.วัดดาว"},
-  {id:"124",district:"บางปลาม้า",name:"อบต.สำเภาล่ม"},
-  {id:"125",district:"อู่ทอง",name:"อบต.ดอนมะเกลือ"},
-  {id:"126",district:"ด่านช้าง",name:"อบต.หนองมะค่า"},
-  {id:"127",district:"สามชุก",name:"อบต.หนองแปน"}
-];
 
-// === STATE ===
-let uploadRecords = []; // from Data SDK
-let currentFilter = 'all';
-let selectedFile = null;
+</head>
 
-// === DEFAULT CONFIG ===
-const defaultConfig = {
-  page_title: 'ระบบติดตามการส่งไฟล์',
-  subtitle: 'องค์กรปกครองส่วนท้องถิ่นจังหวัดสุพรรณบุรี',
-  background_color: '#f0f7ff',
-  surface_color: '#ffffff',
-  text_color: '#374151',
-  primary_action_color: '#3aa5ff',
-  secondary_action_color: '#64748b'
-};
+<body>
 
-// === ELEMENT SDK ===
-window.elementSdk.init({
-  defaultConfig,
-  onConfigChange: async (config) => {
-    const c = key => config[key] || defaultConfig[key];
-    document.getElementById('page-title').textContent = c('page_title');
-    document.getElementById('page-subtitle').textContent = c('subtitle');
-    document.body.style.backgroundColor = c('background_color');
-    document.querySelectorAll('.bg-white, [data-surface]').forEach(el => {
-      if (el.closest('#confirm-modal') || el.closest('#toast-container')) return;
-      el.style.backgroundColor = c('surface_color');
-    });
-    document.body.style.color = c('text_color');
-    document.getElementById('upload-btn').style.backgroundColor =
-      document.getElementById('upload-btn').disabled ? '' : c('primary_action_color');
-    document.querySelectorAll('[data-filter-active]').forEach(el => {
-      el.style.backgroundColor = c('primary_action_color');
-    });
-  },
-  mapToCapabilities: (config) => ({
-    recolorables: [
-      { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({background_color:v}); }},
-      { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({surface_color:v}); }},
-      { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({text_color:v}); }},
-      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({primary_action_color:v}); }},
-      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({secondary_action_color:v}); }}
-    ],
-    borderables: [],
-    fontEditable: {
-      get: () => config.font_family || defaultConfig.font_family || 'Noto Sans Thai',
-      set: v => { config.font_family = v; window.elementSdk.setConfig({font_family:v}); document.querySelectorAll('*').forEach(el => el.style.fontFamily = v + ', Noto Sans Thai, sans-serif'); }
-    },
-    fontSizeable: {
-      get: () => config.font_size || defaultConfig.font_size || 14,
-      set: v => { config.font_size = v; window.elementSdk.setConfig({font_size:v}); document.body.style.fontSize = v + 'px'; }
-    }
-  }),
-  mapToEditPanelValues: (config) => new Map([
-    ['page_title', config.page_title || defaultConfig.page_title],
-    ['subtitle', config.subtitle || defaultConfig.subtitle]
-  ])
-});
+<h2>ระบบอัปโหลดเอกสาร อปท. จังหวัดสุพรรณบุรี</h2>
 
-// === DATA SDK ===
-const dataHandler = {
-  onDataChanged(data) {
-    uploadRecords = data;
-    updateStats();
+<div class="search-box">
+  <input type="text" id="search" placeholder="ค้นหาหน่วยงาน...">
+</div>
+
+<table id="table">
+  <thead>
+    <tr>
+      <th>ลำดับ</th>
+      <th>ชื่อหน่วยงาน</th>
+      <th>อัปโหลด</th>
+      <th>สถานะ</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+let orgs = [];
+let statusData = {};
+
+function loadData() {
+  google.script.run.withSuccessHandler(function(data){
+    orgs = data;
     renderTable();
-    populateSelect();
-  }
-};
+  }).getOrganizations();
 
-(async () => {
-  const r = await window.dataSdk.init(dataHandler);
-  if (!r.isOk) console.error('Data SDK init failed');
-  populateSelect();
-  renderTable();
-  lucide.createIcons();
-})();
-
-// === FUNCTIONS ===
-function getOrgStatus(orgId) {
-  return uploadRecords.find(r => r.org_id === orgId);
-}
-
-function updateStats() {
-  const done = ALL_ORGS.filter(o => getOrgStatus(o.id)).length;
-  const pending = ALL_ORGS.length - done;
-  const pct = Math.round((done / ALL_ORGS.length) * 100);
-  document.getElementById('count-done').textContent = done;
-  document.getElementById('count-pending').textContent = pending;
-  document.getElementById('progress-text').textContent = pct + '%';
-  document.getElementById('progress-bar').style.width = pct + '%';
-}
-
-function populateSelect() {
-  const sel = document.getElementById('org-select');
-  const curVal = sel.value;
-  const districts = [...new Set(ALL_ORGS.map(o => o.district))];
-  let html = '<option value="">-- เลือกหน่วยงาน --</option>';
-  districts.forEach(d => {
-    html += `<optgroup label="${d}">`;
-    ALL_ORGS.filter(o => o.district === d).forEach(o => {
-      const status = getOrgStatus(o.id);
-      const mark = status ? ' ✅' : ' 🔴';
-      html += `<option value="${o.id}">${o.name}${mark}</option>`;
-    });
-    html += '</optgroup>';
-  });
-  sel.innerHTML = html;
-  sel.value = curVal;
-  updateUploadBtn();
-}
-
-function handleFileSelect(input) {
-  if (input.files.length) {
-    selectedFile = input.files[0];
-    document.getElementById('file-label').textContent = selectedFile.name;
-    document.getElementById('file-label').classList.remove('text-gray-400');
-    document.getElementById('file-label').classList.add('text-gray-700');
-  }
-  updateUploadBtn();
-}
-
-function updateUploadBtn() {
-  const sel = document.getElementById('org-select').value;
-  document.getElementById('upload-btn').disabled = !(sel && selectedFile);
-}
-
-document.getElementById('org-select').addEventListener('change', updateUploadBtn);
-
-async function handleUpload() {
-  const orgId = document.getElementById('org-select').value;
-  if (!orgId || !selectedFile) return;
-  const org = ALL_ORGS.find(o => o.id === orgId);
-  const existing = getOrgStatus(orgId);
-  const btn = document.getElementById('upload-btn');
-  const btnText = document.getElementById('upload-btn-text');
-
-  btn.disabled = true;
-  btnText.textContent = 'กำลังบันทึก...';
-
-  if (uploadRecords.length >= 999 && !existing) {
-    showToast('ข้อมูลเต็มแล้ว (999 รายการ) กรุณาลบบางรายการก่อน', 'error');
-    btn.disabled = false;
-    btnText.textContent = 'อัปโหลด';
-    return;
-  }
-
-  let result;
-  if (existing) {
-    result = await window.dataSdk.update({
-      ...existing,
-      uploaded: true,
-      upload_date: new Date().toISOString(),
-      file_name: selectedFile.name
-    });
-  } else {
-    result = await window.dataSdk.create({
-      org_id: orgId,
-      org_name: org.name,
-      uploaded: true,
-      upload_date: new Date().toISOString(),
-      file_name: selectedFile.name
-    });
-  }
-
-  if (result.isOk) {
-    showToast(`บันทึกสถานะ "${org.name}" เรียบร้อยแล้ว`, 'success');
-  } else {
-    showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
-  }
-
-  selectedFile = null;
-  document.getElementById('file-input').value = '';
-  document.getElementById('file-label').textContent = 'คลิกเพื่อเลือกไฟล์...';
-  document.getElementById('file-label').classList.add('text-gray-400');
-  document.getElementById('file-label').classList.remove('text-gray-700');
-  btn.disabled = false;
-  btnText.textContent = 'อัปโหลด';
-  updateUploadBtn();
-}
-
-function setFilter(f) {
-  currentFilter = f;
-  ['all','done','pending'].forEach(key => {
-    const el = document.getElementById('filter-' + key);
-    if (key === f) {
-      el.className = 'px-3 py-2 rounded-xl text-sm font-medium bg-pastel-400 text-white transition-all';
-      el.setAttribute('data-filter-active','');
-    } else {
-      el.className = 'px-3 py-2 rounded-xl text-sm font-medium bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 transition-all';
-      el.removeAttribute('data-filter-active');
-    }
-  });
-  renderTable();
+  google.script.run.withSuccessHandler(function(data){
+    statusData = data;
+    renderTable();
+  }).getStatus();
 }
 
 function renderTable() {
-  const search = (document.getElementById('search-input').value || '').toLowerCase();
-  const tbody = document.getElementById('org-table');
-  let filtered = ALL_ORGS;
-  if (search) filtered = filtered.filter(o => o.name.includes(search) || o.district.includes(search));
-  if (currentFilter === 'done') filtered = filtered.filter(o => getOrgStatus(o.id));
-  if (currentFilter === 'pending') filtered = filtered.filter(o => !getOrgStatus(o.id));
+  const tbody = document.querySelector("#table tbody");
+  tbody.innerHTML = "";
 
-  document.getElementById('no-results').classList.toggle('hidden', filtered.length > 0);
+  const keyword = document.getElementById("search").value;
 
-  const existingRows = new Map([...tbody.children].map(el => [el.dataset.orgId, el]));
-  const newIds = new Set(filtered.map(o => o.id));
+  orgs.forEach((org, i) => {
+    if (!org.includes(keyword)) return;
 
-  // Remove rows no longer shown
-  existingRows.forEach((el, id) => { if (!newIds.has(id)) el.remove(); });
+    let uploaded = statusData[org + ".pdf"];
 
-  let prevEl = null;
-  filtered.forEach((o, i) => {
-    const status = getOrgStatus(o.id);
-    let row = existingRows.get(o.id);
-    if (row) {
-      // Update in place
-      row.children[0].textContent = i + 1;
-      row.children[3].innerHTML = status
-        ? '<span class="inline-flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full text-xs font-medium"><span class="status-dot bg-green-500"></span>ส่งแล้ว</span>'
-        : '<span class="inline-flex items-center gap-1 text-red-500 bg-red-50 px-2 py-0.5 rounded-full text-xs font-medium"><span class="status-dot bg-red-400"></span>ยังไม่ส่ง</span>';
-      row.children[4].textContent = status ? formatDate(status.upload_date) : '-';
-    } else {
-      row = document.createElement('tr');
-      row.dataset.orgId = o.id;
-      row.className = 'border-t border-gray-50 hover:bg-pastel-50/50 transition-colors row-animate';
-      row.innerHTML = `
-        <td class="px-4 py-2.5 text-gray-400">${i + 1}</td>
-        <td class="px-4 py-2.5 text-gray-500 text-xs">${o.district}</td>
-        <td class="px-4 py-2.5 font-medium text-gray-700">${o.name}</td>
-        <td class="px-4 py-2.5 text-center">${status
-          ? '<span class="inline-flex items-center gap-1 text-green-600 bg-green-50 px-2 py-0.5 rounded-full text-xs font-medium"><span class="status-dot bg-green-500"></span>ส่งแล้ว</span>'
-          : '<span class="inline-flex items-center gap-1 text-red-500 bg-red-50 px-2 py-0.5 rounded-full text-xs font-medium"><span class="status-dot bg-red-400"></span>ยังไม่ส่ง</span>'
-        }</td>
-        <td class="px-4 py-2.5 text-gray-400 text-xs">${status ? formatDate(status.upload_date) : '-'}</td>
-      `;
-    }
-    if (prevEl) {
-      prevEl.after(row);
-    } else {
-      tbody.prepend(row);
-    }
-    prevEl = row;
+    let row = `
+      <tr class="${uploaded ? 'status-green' : 'status-red'}">
+        <td>${i+1}</td>
+        <td>${org}</td>
+        <td>
+          <input type="file" onchange="uploadFile(event,'${org}')">
+        </td>
+        <td>${uploaded ? "อัปโหลดแล้ว" : "ยังไม่อัปโหลด"}</td>
+      </tr>
+    `;
+    tbody.innerHTML += row;
   });
-
-  lucide.createIcons();
 }
 
-function formatDate(iso) {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return d.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+function uploadFile(e, orgName) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function() {
+    const base64 = reader.result.split(",")[1];
+
+    google.script.run.withSuccessHandler(function(){
+      alert("อัปโหลดสำเร็จ");
+      loadData();
+    }).uploadFile(orgName, base64, file.type);
+  };
+
+  reader.readAsDataURL(file);
 }
 
-function showToast(msg, type) {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  const colors = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-  toast.className = `${colors} text-white px-4 py-3 rounded-xl shadow-lg text-sm flex items-center gap-2 toast-enter`;
-  const icon = type === 'success' ? 'check-circle' : 'alert-circle';
-  toast.innerHTML = `<i data-lucide="${icon}" style="width:16px;height:16px;"></i> ${msg}`;
-  container.appendChild(toast);
-  lucide.createIcons();
-  setTimeout(() => {
-    toast.classList.remove('toast-enter');
-    toast.classList.add('toast-exit');
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
+document.getElementById("search").addEventListener("keyup", renderTable);
 
-function closeConfirm() {
-  document.getElementById('confirm-modal').classList.add('hidden');
-  document.getElementById('confirm-modal').classList.remove('flex');
-}
+loadData();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e2d5555c7798943',t:'MTc3NDYwMzM3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+
+</body>
 </html>
